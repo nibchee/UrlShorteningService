@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!--All jquery Links-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
+
+    <title>Url Shortening Service</title>
+
+    <style>
+        * {
+            font-family: 'Gowun Dodum', sans-serif;
+        }
+
+        .mypic {
+            width: 100%;
+            height: 500px;
+            background-image: linear-gradient(0deg, rgba(0, 0, 0, 0.164), rgba(0, 0, 0, 0.5)), url('https://files.realpython.com/media/Build-a-URL-Shortener_Watermarked.b8dfdb666d42.jpg');
+            background-position: center;
+            background-size: cover;
+            color: rgb(53, 44, 44);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mypic>h1 {
+            font-size: 30px;
+        }
+
+        .mybox {
+            width: 100%;
+            max-width: 700px;
+            padding: 20px;
+            box-shadow: 0px 0px 10px 0px rgb(25, 27, 27);
+            margin: 20px auto;
+        }
+
+        #mybucket {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #mybucket>input {
+            width: 90%;
+        }
+
+        .mybox>li {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            min-height: 48px;
+        }
+
+        .mybox>li>h2 {
+            max-width: 75%;
+            font-size: 20px;
+            font-weight: 500;
+            margin-right: auto;
+            margin-bottom: 0px;
+        }
+
+        .mybox>li>h2.done {
+            text-decoration: line-through
+        }
+    </style>
+    <script>
+        //On Loading Project 
+        $(document).ready(function () {
+            show_urls();
+        });
+
+        //Fetching All Urls
+        function show_urls() {
+            $('#url-list').empty()
+            $.ajax({
+                type: "GET",
+                url: "/urls",
+                data: {},
+                success: function (response) {
+                    let rows = response['urls'];
+                    console.log("show_urls() : Urls Fetched " + rows)
+                    for (let i = 0; i < rows.length; i++) {
+                        let name = rows[i]['name'];
+                        let url = rows[i]['shortUrl'];
+                        let id = rows[i]['shortId'];
+                        makeUrlRow(name, url, id);
+                    }
+                }
+            });
+        }
+
+        //Appending Each url details fetched from backend to Table
+        function makeUrlRow(name, url, id) {
+            let tempHtml = `<tr>
+            <td>${name}</td>
+            <td><a href="${url}" target="_blank">${url}</a></td>
+            <td><button onclick='update_url("${name}","${url}","${id}")' type="button" id="updat-btn" class="btn btn-light">Update!</button></td>
+            <td><button onclick='delete_url("${id}")' type="button" class="btn btn-dark">Delete!</button></td>
+        </tr>`;
+            $("#url-list").append(tempHtml);
+        }
+
+        //Generate , Save & Update Url
+        function generateAndSaveUrl() {
+            let webSiteName = $('#website_name').val();
+            let longUrl = $('#long_url').val();
+            //Fetching Text on Button Either generate or update
+            let createOrUpdate = $('#generate-btn').text();
+            console.log("generateAndSaveUrl() : Long Url is " + longUrl);
+
+            //By default Functionalities of Creating Short Url
+            url = "/createShortUrl"
+            data = {
+                'url': longUrl,
+                'webSiteName': webSiteName
+            }
+
+            //if button text contains update
+            if (createOrUpdate.toLowerCase().includes("update")) {
+                //means update operation
+                let shortId = $('#hiddenShortId').val();
+                console.log("Hidden Short Id" + shortId);
+                url = "/updateUrl"
+                data.shortId = shortId;
+            }
+
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: data,
+                success: function (response) {
+                    console.log(response);
+                    alert("Short Url is " + response['short_url'] + " " + response['msg']);
+                    window.location.reload();
+                }
+            });
+        }
+
+        //DELEET operation
+        function delete_url(id) {
+            //At First Scrolling Up
+            $('html, body').animate({
+                scrollTop: 0
+            }, '300');
+
+            //Now Deleting
+            $.ajax({
+                type: "POST",
+                url: "/deleteUrl",
+                data: { shortId: id },
+                success: function (response) {
+                    alert(response["msg"]);
+                    window.location.reload();
+                }
+            });
+        }
+
+        //Update Url , It only fills Text Input + Fetch orignal Url , hide id in new field
+        function update_url(name, url, id) {
+            //creating new hidden field containg shortId
+            let hiddenId = $("<input>").attr({
+                type: "hidden",
+                id: "hiddenShortId",
+                value: id
+            });
+            //Appending Short Id
+            $("#mybucket").append(hiddenId);
+            //Fetching Original Url
+            $.ajax({
+                type: "POST",
+                url: "/getOriginalUrl",
+                data: {
+                    shortId: id
+                },
+                success: function (response) {
+                    console.log(response)
+                    $('#long_url').val(response["originalUrl"]);
+                    $('#website_name').val(name);
+                }
+            });
+
+            //Scrolling Up to Form
+            $('html, body').animate({
+                scrollTop: 300
+            }, '300');
+            //Updating  Generate Button Text * Color
+            $('#generate-btn').html("Update").removeClass("btn-danger").addClass("btn-warning");
+        }
+    </script>
+</head>
+
+<body>
+    <div class="mypic"></div>
+    <div class="mybox">
+        <div id="mybucket">
+            <input id="website_name" class="form-control" type="text" placeholder="Please Enter Name for URL">
+            <br>
+            <input id="long_url" class="form-control" type="text" placeholder="Please Enter Target Loo.....ng URL here">
+            <br>
+            <button onclick="generateAndSaveUrl()" type="button" class="btn btn-danger"
+                id="generate-btn">Generate</button>
+        </div>
+    </div>
+    <div class="mybox">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">WebSite Name</th>
+                    <th scope="col">Short Urls</th>
+                    <th scope="col">Update</th>
+                    <th scope="col">Delete</th>
+                </tr>
+            </thead>
+            <tbody id="url-list">
+                <tr>
+                    <td>
+                        <h1>Nirbhay</h1>
+                    </td>
+                    <td><a href="123">3</a></td>
+                    <td> <button onclick="delete_url('123')" type="button" class="btn btn-dark">Delete!</button></td>
+                </tr>
+
+            </tbody>
+        </table>
+    </div>
+</body>
+
+</html>
